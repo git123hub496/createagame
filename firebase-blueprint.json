@@ -1,0 +1,292 @@
+{
+  "entities": {
+    "GameMap": {
+      "title": "GameMap",
+      "description": "A user-created and verified platformer level",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Name of the map",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the challenge",
+          "maxLength": 240
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Custom nickname of creator",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Anonymous or user ID of creator",
+          "maxLength": 128
+        },
+        "elementsJson": {
+          "type": "string",
+          "description": "JSON serialized platformer map elements data",
+          "maxLength": 200000
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether the creator successfully beat the level"
+        },
+        "verifiedTimeMs": {
+          "type": "number",
+          "description": "Author completion time in milliseconds"
+        },
+        "playCount": {
+          "type": "number",
+          "description": "Number of times level was played"
+        },
+        "clearCount": {
+          "type": "number",
+          "description": "Number of successful completions"
+        },
+        "likesCount": {
+          "type": "number",
+          "description": "Number of star ratings or likes"
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "Difficulty tag",
+          "enum": ["Easy", "Normal", "Hard", "Insane"]
+        },
+        "theme": {
+          "type": "string",
+          "description": "Visual theme of the map",
+          "enum": ["Grassland", "Volcano", "Cyber", "Underground"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of publication"
+        }
+      },
+      "required": ["title", "authorName", "elementsJson", "verified"]
+    },
+    "Party": {
+      "title": "Party",
+      "description": "A 2-player multiplayer room with live position syncing and game modes",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "5-letter party room code",
+          "maxLength": 10
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Unique identifier of the party host manager",
+          "maxLength": 128
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Display name of host",
+          "maxLength": 32
+        },
+        "hostAvatarJson": {
+          "type": "string",
+          "description": "Serialized avatar configuration of host",
+          "maxLength": 2000
+        },
+        "guestId": {
+          "type": "string",
+          "description": "Unique identifier of joined second player",
+          "maxLength": 128
+        },
+        "guestName": {
+          "type": "string",
+          "description": "Display name of guest",
+          "maxLength": 32
+        },
+        "guestAvatarJson": {
+          "type": "string",
+          "description": "Serialized avatar configuration of guest",
+          "maxLength": 2000
+        },
+        "gameMode": {
+          "type": "string",
+          "description": "Multiplayer mode: coop (play together until both finish) or race (race to the finish)",
+          "enum": ["coop", "race"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Lobby and gameplay state",
+          "enum": ["waiting", "starting", "playing", "ended", "closed"]
+        },
+        "mapId": {
+          "type": "string",
+          "description": "Selected map ID",
+          "maxLength": 128
+        },
+        "mapDataJson": {
+          "type": "string",
+          "description": "Serialized GameMap level data played by both users",
+          "maxLength": 200000
+        },
+        "hostPosJson": {
+          "type": "string",
+          "description": "Live position and state of host, updated as player moves and deleted/overwritten",
+          "maxLength": 2000
+        },
+        "guestPosJson": {
+          "type": "string",
+          "description": "Live position and state of guest, updated as player moves and deleted/overwritten",
+          "maxLength": 2000
+        },
+        "resultsJson": {
+          "type": "string",
+          "description": "End-of-round results, completion times, and winner",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last activity timestamp"
+        }
+      },
+      "required": ["id", "hostId", "hostName", "gameMode", "status"]
+    },
+    "Addon": {
+      "title": "Addon",
+      "description": "Custom user-created add-on pack with blocks, hats, and colors",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Addon ID",
+          "maxLength": 64
+        },
+        "title": {
+          "type": "string",
+          "description": "Add-on pack title",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what is included",
+          "maxLength": 300
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Creator nickname",
+          "maxLength": 32
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Creator user ID",
+          "maxLength": 128
+        },
+        "addonDataJson": {
+          "type": "string",
+          "description": "Serialized blocks, hats, and colors data",
+          "maxLength": 500000
+        },
+        "installCount": {
+          "type": "number",
+          "description": "Number of users who have added this addon"
+        },
+        "likesCount": {
+          "type": "number",
+          "description": "Likes or star rating count"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["id", "title", "authorName", "addonDataJson"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "Player public or private profile with avatar and game stats",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique player ID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Player username",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "avatarJson": {
+          "type": "string",
+          "description": "Serialized AvatarConfig JSON",
+          "maxLength": 4000
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the profile is publicly viewable"
+        },
+        "mapsCleared": {
+          "type": "number",
+          "description": "Total maps cleared"
+        },
+        "mapsCreated": {
+          "type": "number",
+          "description": "Total maps created"
+        },
+        "partiesPlayed": {
+          "type": "number",
+          "description": "Multiplayer matches played"
+        },
+        "partiesWon": {
+          "type": "number",
+          "description": "Multiplayer races won"
+        },
+        "addonsCreated": {
+          "type": "number",
+          "description": "Total community add-ons published"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": ["id", "name", "avatarJson", "isPublic"]
+    }
+  },
+  "firestore": {
+    "/maps/{mapId}": {
+      "schema": {
+        "$ref": "#/entities/GameMap"
+      },
+      "description": "Public published platformer maps created by players"
+    },
+    "/parties/{partyId}": {
+      "schema": {
+        "$ref": "#/entities/Party"
+      },
+      "description": "Active 2-player multiplayer parties with real-time sync"
+    },
+    "/addons/{addonId}": {
+      "schema": {
+        "$ref": "#/entities/Addon"
+      },
+      "description": "Community user-created add-ons published for anyone to install"
+    },
+    "/profiles/{profileId}": {
+      "schema": {
+        "$ref": "#/entities/Profile"
+      },
+      "description": "Player profiles with avatar and game stats"
+    }
+  }
+}

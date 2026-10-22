@@ -1,0 +1,8 @@
+{
+  "name": "Createagame",
+  "description": "Create, test, beat, and publish platformer maps with a custom square avatar, rich map editor, and community explore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

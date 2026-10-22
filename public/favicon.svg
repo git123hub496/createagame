@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1035"/>
+      <stop offset="100%" stop-color="#0a0515"/>
+    </linearGradient>
+    <linearGradient id="cubeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rectangle -->
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#818cf8" stroke-width="2" stroke-opacity="0.4"/>
+  <!-- Grass platform line -->
+  <rect x="8" y="44" width="48" height="12" rx="3" fill="#22c55e"/>
+  <rect x="8" y="44" width="48" height="4" rx="1" fill="#4ade80"/>
+  <!-- Player square avatar -->
+  <rect x="20" y="20" width="24" height="24" rx="4" fill="url(#cubeGrad)" stroke="#38bdf8" stroke-width="2"/>
+  <!-- Square eyes -->
+  <rect x="25" y="27" width="3" height="6" rx="1" fill="#0f172a"/>
+  <rect x="35" y="27" width="3" height="6" rx="1" fill="#0f172a"/>
+  <!-- Sprout / crown detail -->
+  <path d="M 29 20 L 32 15 L 35 20 Z" fill="#f59e0b"/>
+</svg>
