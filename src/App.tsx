@@ -4,28 +4,27 @@ import { TitleScreen } from './components/TitleScreen';
 import { LevelEditor } from './components/LevelEditor';
 import { GameCanvas } from './components/GameCanvas';
 import { ExploreView } from './components/ExploreView';
+import { AddonView } from './components/AddonView';
 import { VictoryModal } from './components/VictoryModal';
 import { AddonRequirementModal } from './components/AddonRequirementModal';
-import { MultiplayerModal } from './components/MultiplayerModal';
-import { MultiplayerVictoryModal } from './components/MultiplayerVictoryModal';
+import { AuthModal } from './components/AuthModal';
+import { TutorialModal } from './components/TutorialModal';
 import { isHalloweenEnabled } from './services/addonService';
 import { DEFAULT_MAPS } from './services/defaultMaps';
-import { fetchMapById, incrementMapPlays, incrementMapClears, saveLocalMap, getRandomMap, fetchAllExploreMaps } from './services/mapStorage';
 import {
-  PartyData,
-  subscribeToParty,
-  startPartyGame,
-  returnPartyToLobby,
-  leaveParty,
-  getPartyPlayerId,
-  updatePartySettings,
-} from './services/partyService';
+  fetchMapById,
+  incrementMapPlays,
+  incrementMapClears,
+  saveLocalMap,
+  getRandomMap,
+} from './services/mapStorage';
+import { checkCurrentAccountHasPassword } from './services/authService';
 import { testConnection } from './firebase';
 
 const AVATAR_STORAGE_KEY = 'cag_player_avatar';
 
 export default function App() {
-  // Player avatar state (White square by default per prompt)
+  // Player avatar state (White square by default)
   const [avatar, setAvatar] = useState<AvatarConfig>(() => {
     try {
       const saved = localStorage.getItem(AVATAR_STORAGE_KEY);
@@ -47,12 +46,8 @@ export default function App() {
   const [isVerificationMode, setIsVerificationMode] = useState(false);
   const [requiredAddonMap, setRequiredAddonMap] = useState<GameMap | null>(null);
 
-  // Multiplayer party state
-  const [activeParty, setActiveParty] = useState<PartyData | null>(null);
-  const [showMultiplayerModal, setShowMultiplayerModal] = useState(false);
-  const [initialPartyCode, setInitialPartyCode] = useState<string | null>(null);
-  const [showNextMapPicker, setShowNextMapPicker] = useState(false);
-  const [allMapsList, setAllMapsList] = useState<GameMap[]>([]);
+  // Replay key: increments to cleanly re-instantiate GameCanvas with zero lag, fresh timers, and reset to start
+  const [gameRunId, setGameRunId] = useState(0);
 
   // Victory modal state
   const [victoryData, setVictoryData] = useState<{
@@ -60,6 +55,18 @@ export default function App() {
     clearTimeMs: number;
     deaths: number;
   } | null>(null);
+
+  // Authentication & Password Enforcement State
+  const [showForcedPasswordModal, setShowForcedPasswordModal] = useState(false);
+
+  // Skippable Tutorial that plays right away
+  const [showInitialTutorial, setShowInitialTutorial] = useState(() => {
+    try {
+      return !localStorage.getItem('cag_tutorial_seen');
+    } catch {
+      return false;
+    }
+  });
 
   // Save avatar changes to localStorage
   const handleUpdateAvatar = (updated: AvatarConfig) => {
@@ -69,58 +76,92 @@ export default function App() {
     } catch {}
   };
 
-  // Test Firebase connection on initial mount
-  useEffect(() => {
-    testConnection().then((connected) => {
-      if (connected) {
-        console.log('Connected to Firebase Firestore successfully.');
+  // Navigate helper that updates view and browser URL history
+  const navigateTo = useCallback((view: AppView, path?: string) => {
+    setCurrentView(view);
+    if (path) {
+      try {
+        window.history.pushState(null, '', path);
+      } catch {
+        window.location.hash = path;
       }
-    });
+    }
   }, []);
 
-  const startPlaying = (map: GameMap) => {
+  // Start playing a map cleanly
+  const startPlaying = useCallback((map: GameMap) => {
     setActiveMap(map);
     setIsVerificationMode(false);
     setVictoryData(null);
+    setGameRunId((prev) => prev + 1);
     setCurrentView('play');
-    window.location.hash = `/play/${map.id}`;
+    try {
+      window.history.pushState(null, '', `#/play/${map.id}`);
+    } catch {
+      window.location.hash = `/play/${map.id}`;
+    }
     incrementMapPlays(map.id);
-  };
+  }, []);
 
   // Launch Map in Play mode with Addon requirement verification
-  const handlePlayMap = (map: GameMap) => {
-    const requiresHalloween =
-      map.theme === 'Halloween' ||
-      (map.elements && map.elements.some((e) => e.type === 'pumpkin' || e.type === 'jackolantern'));
+  const handlePlayMap = useCallback(
+    (map: GameMap) => {
+      const requiresHalloween =
+        map.theme === 'Halloween' ||
+        (map.elements &&
+          map.elements.some((e) => e.type === 'pumpkin' || e.type === 'jackolantern'));
 
-    if (requiresHalloween && !isHalloweenEnabled()) {
-      setRequiredAddonMap(map);
-      return;
-    }
+      if (requiresHalloween && !isHalloweenEnabled()) {
+        setRequiredAddonMap(map);
+        return;
+      }
 
-    startPlaying(map);
-  };
+      startPlaying(map);
+    },
+    [startPlaying]
+  );
 
-  // Handle URL Hash navigation: #/play/[id], #/party/join/[code], or ?party=[code]
-  const handleHashChange = useCallback(async () => {
+  // Handle URL navigation: /explore, /Addon, /Addon/studio, /play/:id
+  const syncRouteFromLocation = useCallback(async () => {
+    const path = window.location.pathname;
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
-    let targetId: string | null = null;
 
-    // Detect party join URL: #/party/join/ABCDE or /party/join/ABCDE or ?party=ABCDE
-    const partyMatch =
-      hash.match(/party\/join\/([A-Za-z0-9]{5})/i) ||
-      window.location.pathname.match(/party\/join\/([A-Za-z0-9]{5})/i) ||
-      (urlParams.get('party') ? [null, urlParams.get('party')] : null);
-
-    if (partyMatch && partyMatch[1]) {
-      const code = partyMatch[1].toUpperCase();
-      setInitialPartyCode(code);
-      setShowMultiplayerModal(true);
+    // 1. Explore route: /explore or #explore or #/explore
+    if (path === '/explore' || hash === '#explore' || hash === '#/explore') {
+      setCurrentView('explore');
       return;
     }
 
-    if (hash.startsWith('#/play/')) {
+    // 2. Addon studio route: /Addon/studio or #Addon/studio or #/Addon/studio
+    if (
+      path === '/Addon/studio' ||
+      hash === '#Addon/studio' ||
+      hash === '#/Addon/studio' ||
+      hash === '#/addon/studio' ||
+      path.toLowerCase() === '/addon/studio'
+    ) {
+      setCurrentView('addon-studio');
+      return;
+    }
+
+    // 3. Addon catalog route: /Addon or #Addon or #/Addon
+    if (
+      path === '/Addon' ||
+      hash === '#Addon' ||
+      hash === '#/Addon' ||
+      hash === '#/addon' ||
+      path.toLowerCase() === '/addon'
+    ) {
+      setCurrentView('addon');
+      return;
+    }
+
+    // 4. Play Map route: /play/:id or #/play/:id or ?play=:id
+    let targetId: string | null = null;
+    if (path.startsWith('/play/')) {
+      targetId = path.replace('/play/', '').trim();
+    } else if (hash.startsWith('#/play/')) {
       targetId = hash.replace('#/play/', '').trim();
     } else if (hash.startsWith('#play/')) {
       targetId = hash.replace('#play/', '').trim();
@@ -134,89 +175,75 @@ export default function App() {
         handlePlayMap(map);
       }
     }
-  }, []);
+  }, [handlePlayMap]);
 
   useEffect(() => {
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [handleHashChange]);
+    syncRouteFromLocation();
+    window.addEventListener('popstate', syncRouteFromLocation);
+    window.addEventListener('hashchange', syncRouteFromLocation);
+    return () => {
+      window.removeEventListener('popstate', syncRouteFromLocation);
+      window.removeEventListener('hashchange', syncRouteFromLocation);
+    };
+  }, [syncRouteFromLocation]);
 
-  // Subscribe to real-time party changes
+  // Test Firebase connection & check if password is required on initial mount
   useEffect(() => {
-    if (!activeParty?.id) return;
-    const unsub = subscribeToParty(
-      activeParty.id,
-      (updatedParty) => {
-        setActiveParty(updatedParty);
-
-        // When host starts match, transition to game view automatically
-        if (updatedParty.status === 'playing') {
-          if (currentView !== 'play') {
-            setActiveMap(updatedParty.mapData);
-            setCurrentView('play');
-            setShowMultiplayerModal(false);
-          } else if (activeMap.id !== updatedParty.mapData.id) {
-            setActiveMap(updatedParty.mapData);
-          }
-        }
-        // When host returns to lobby/homescreen, transition both players back to party homescreen
-        else if (updatedParty.status === 'waiting') {
-          setCurrentView((prev) => (prev === 'play' ? 'title' : prev));
-          setShowMultiplayerModal(true);
-        }
-        // When host leaves and closes the party
-        else if (updatedParty.status === 'closed') {
-          setActiveParty(null);
-          setShowMultiplayerModal(false);
-          if (currentView === 'play') {
-            setCurrentView('title');
-          }
-        }
-      },
-      (err) => {
-        console.warn('Party sync update notice:', err);
+    testConnection().then((connected) => {
+      if (connected) {
+        console.log('Connected to Firebase Firestore successfully.');
       }
-    );
-    return () => unsub();
-  }, [activeParty?.id, currentView]);
+    });
 
-  // Leave active party cleanly
-  const handleLeaveParty = useCallback(async () => {
-    if (!activeParty) return;
-    const myId = getPartyPlayerId();
-    const isHost = activeParty.hostId === myId;
-    await leaveParty(activeParty.id, isHost);
-    setActiveParty(null);
-    setShowMultiplayerModal(false);
-    if (currentView === 'play') {
-      window.location.hash = '';
-      setCurrentView('title');
+    // Check if account has a password saved to Firebase
+    if (sessionStorage.getItem('cag_skip_secure_account') !== 'true') {
+      checkCurrentAccountHasPassword().then((res) => {
+        if (!res.hasPassword) {
+          setShowForcedPasswordModal(true);
+        }
+      });
     }
-  }, [activeParty, currentView]);
 
-  // Play a random existing map and continue playing another
-  const handlePlayRandomMap = useCallback(async (excludeId?: string) => {
-    const randomMap = await getRandomMap(excludeId);
-    handlePlayMap(randomMap);
+    const handleAuthChange = () => {
+      if (sessionStorage.getItem('cag_skip_secure_account') !== 'true') {
+        checkCurrentAccountHasPassword().then((res) => {
+          setShowForcedPasswordModal(!res.hasPassword);
+        });
+      }
+    };
+
+    window.addEventListener('cag_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('cag_auth_changed', handleAuthChange);
   }, []);
+
+  // Play a random existing map
+  const handlePlayRandomMap = useCallback(
+    async (excludeId?: string) => {
+      const randomMap = await getRandomMap(excludeId);
+      handlePlayMap(randomMap);
+    },
+    [handlePlayMap]
+  );
 
   const handlePlayAnotherInGame = useCallback(() => {
     handlePlayRandomMap(activeMap.id);
   }, [handlePlayRandomMap, activeMap.id]);
 
+  // Clean Replay current map: resets player to start point and restarts game loop fresh
+  const handleReplayCurrentMap = useCallback(() => {
+    setVictoryData(null);
+    setGameRunId((prev) => prev + 1);
+  }, []);
+
   const handleExitGame = useCallback(() => {
-    if (activeParty) {
-      handleLeaveParty();
-    } else if (isVerificationMode) {
+    if (isVerificationMode) {
       setCurrentView('editor');
     } else {
-      window.location.hash = '';
-      setCurrentView('title');
+      navigateTo('title', '/');
     }
-  }, [activeParty, handleLeaveParty, isVerificationMode]);
+  }, [isVerificationMode, navigateTo]);
 
-  // Keyboard shortcut: when user presses 'k' or 'K' on title screen, pick random map and play
+  // Keyboard shortcut: when user presses 'k' or 'K' on title or play screen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -243,33 +270,42 @@ export default function App() {
     setActiveMap(map);
     setIsVerificationMode(verification);
     setVictoryData(null);
+    setGameRunId((prev) => prev + 1);
     setCurrentView('play');
   };
 
   // Level Cleared Handler
-  const handleVictory = useCallback((clearTimeMs: number, deaths: number) => {
-    if (isVerificationMode && editorMap) {
-      // Mark level as verified!
-      const verifiedMap: GameMap = {
-        ...editorMap,
-        verified: true,
-        verifiedTimeMs: clearTimeMs,
-      };
-      setEditorMap(verifiedMap);
-      saveLocalMap(verifiedMap);
-    } else if (!isVerificationMode) {
-      incrementMapClears(activeMap.id);
-    }
+  const handleVictory = useCallback(
+    (clearTimeMs: number, deaths: number) => {
+      if (isVerificationMode && editorMap) {
+        const verifiedMap: GameMap = {
+          ...editorMap,
+          verified: true,
+          verifiedTimeMs: clearTimeMs,
+        };
+        setEditorMap(verifiedMap);
+        saveLocalMap(verifiedMap);
+      } else if (!isVerificationMode) {
+        incrementMapClears(activeMap.id);
+      }
 
-    setVictoryData({
-      show: true,
-      clearTimeMs,
-      deaths,
-    });
-  }, [isVerificationMode, editorMap, activeMap.id]);
+      setVictoryData({
+        show: true,
+        clearTimeMs,
+        deaths,
+      });
+    },
+    [isVerificationMode, editorMap, activeMap.id]
+  );
 
   return (
-    <div className={`w-screen h-screen ${currentView === 'explore' ? 'overflow-y-auto' : 'overflow-hidden'} bg-black font-sans`}>
+    <div
+      className={`w-screen h-screen ${
+        currentView === 'explore' || currentView === 'addon' || currentView === 'addon-studio'
+          ? 'overflow-y-auto'
+          : 'overflow-hidden'
+      } bg-black font-sans`}
+    >
       {/* 1. Title / Home Screen */}
       {currentView === 'title' && (
         <TitleScreen
@@ -280,13 +316,13 @@ export default function App() {
             setCurrentView('editor');
           }}
           onExplore={() => {
-            setCurrentView('explore');
+            navigateTo('explore', '/explore');
+          }}
+          onOpenAddon={(studio) => {
+            navigateTo(studio ? 'addon-studio' : 'addon', studio ? '/Addon/studio' : '/Addon');
           }}
           onPlayRandom={() => {
             handlePlayRandomMap();
-          }}
-          onOpenMultiplayer={() => {
-            setShowMultiplayerModal(true);
           }}
           onPlayMap={handlePlayMap}
         />
@@ -298,8 +334,7 @@ export default function App() {
           initialMap={editorMap}
           avatar={avatar}
           onExit={() => {
-            window.location.hash = '';
-            setCurrentView('title');
+            navigateTo('title', '/');
           }}
           onTestPlay={(mapToTest, verification) => {
             handleTestPlayFromEditor(mapToTest, verification);
@@ -307,32 +342,26 @@ export default function App() {
         />
       )}
 
-      {/* 3. Game Play Screen */}
+      {/* 3. Game Play Screen (keyed on activeMap.id and gameRunId for guaranteed clean reset to start) */}
       {currentView === 'play' && (
         <GameCanvas
+          key={`${activeMap.id}-${gameRunId}`}
           map={activeMap}
           avatar={avatar}
           isVerificationMode={isVerificationMode}
-          party={activeParty}
-          onLeaveParty={handleLeaveParty}
-          onSelectPartyMap={() => {
-            setCurrentView('title');
-            setShowMultiplayerModal(true);
-          }}
           onVictory={handleVictory}
           onPlayAnother={handlePlayAnotherInGame}
           onExit={handleExitGame}
         />
       )}
 
-      {/* 4. Explore Community Maps */}
+      {/* 4. Explore Community Maps (/explore full-screen) */}
       {currentView === 'explore' && (
         <ExploreView
           avatar={avatar}
           onPlayMap={handlePlayMap}
           onBack={() => {
-            window.location.hash = '';
-            setCurrentView('title');
+            navigateTo('title', '/');
           }}
           onEditMap={(mapToEdit) => {
             setEditorMap(mapToEdit);
@@ -341,118 +370,38 @@ export default function App() {
         />
       )}
 
-      {/* Multiplayer Party Lobby Modal */}
-      {showMultiplayerModal && (
-        <MultiplayerModal
+      {/* 5. Add-on Studio & Catalog (/Addon and /Addon/studio full-screen) */}
+      {(currentView === 'addon' || currentView === 'addon-studio') && (
+        <AddonView
           avatar={avatar}
-          initialPartyCode={initialPartyCode}
-          currentParty={activeParty}
-          onPartyUpdate={(party) => {
-            setActiveParty(party);
-            if (!party) {
-              setInitialPartyCode(null);
-            }
+          initialStudioMode={currentView === 'addon-studio'}
+          onBack={() => {
+            navigateTo('title', '/');
           }}
-          onStartGame={(party) => {
-            setActiveMap(party.mapData);
-            setCurrentView('play');
-            setShowMultiplayerModal(false);
+          onNavigateToStudio={() => {
+            navigateTo('addon-studio', '/Addon/studio');
           }}
-          onClose={() => {
-            setShowMultiplayerModal(false);
+          onNavigateToBrowse={() => {
+            navigateTo('addon', '/Addon');
           }}
         />
       )}
 
-      {/* Multiplayer Round Victory / Results Modal */}
-      {activeParty && activeParty.status === 'ended' && (
-        <MultiplayerVictoryModal
-          party={activeParty}
-          results={
-            activeParty.results || {
-              hostFinished: true,
-              guestFinished: true,
-              mode: activeParty.gameMode,
-              endedAt: Date.now(),
-            }
-          }
-          isHost={activeParty.hostId === getPartyPlayerId()}
-          onPlayAgain={async () => {
-            await startPartyGame(activeParty.id);
-          }}
-          onSelectNextMap={async () => {
-            await returnPartyToLobby(activeParty.id);
-            setCurrentView('title');
-            setShowMultiplayerModal(true);
-          }}
-          onBackToLobby={async () => {
-            await returnPartyToLobby(activeParty.id);
-            setCurrentView('title');
-            setShowMultiplayerModal(true);
-          }}
-          onLeaveParty={handleLeaveParty}
-        />
-      )}
-
-      {/* Host Next Map Picker Modal */}
-      {showNextMapPicker && activeParty && (
-        <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="relative w-full max-w-md rounded-3xl backdrop-blur-2xl bg-neutral-900/90 border border-white/20 shadow-2xl overflow-hidden flex flex-col text-white max-h-[80vh]">
-            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between backdrop-blur-xl bg-black/40">
-              <h3 className="text-sm font-black text-white">Select Next Map</h3>
-              <button
-                onClick={() => setShowNextMapPicker(false)}
-                className="p-1.5 rounded-xl hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4 space-y-2 overflow-y-auto">
-              {allMapsList.map((map) => (
-                <div
-                  key={map.id}
-                  onClick={async () => {
-                    setShowNextMapPicker(false);
-                    await updatePartySettings(activeParty.id, {
-                      mapData: map,
-                      mapId: map.id,
-                    });
-                    await startPartyGame(activeParty.id);
-                  }}
-                  className="p-3 rounded-2xl backdrop-blur-xl border border-white/10 bg-black/40 hover:bg-black/60 cursor-pointer flex items-center justify-between transition"
-                >
-                  <div>
-                    <div className="text-xs font-black text-white">{map.title}</div>
-                    <div className="text-[10px] text-neutral-400 mt-0.5">
-                      Theme: {map.theme || 'Grassland'} · By {map.authorName || 'Creator'}
-                    </div>
-                  </div>
-                  <span className="text-xs text-emerald-400 font-bold">Play</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Solo Victory Modal Overlay */}
-      {!activeParty && victoryData?.show && (
+      {/* Victory Modal Overlay with Replay */}
+      {victoryData?.show && (
         <VictoryModal
           map={activeMap}
           clearTimeMs={victoryData.clearTimeMs}
           deaths={victoryData.deaths}
           isVerificationMode={isVerificationMode}
-          onReplay={() => {
-            setVictoryData(null);
-          }}
+          onReplay={handleReplayCurrentMap}
           onPlayAnother={() => {
             setVictoryData(null);
             handlePlayRandomMap(activeMap.id);
           }}
           onBackToMenu={() => {
             setVictoryData(null);
-            window.location.hash = '';
-            setCurrentView('explore');
+            navigateTo('explore', '/explore');
           }}
           onContinueToPublish={() => {
             setVictoryData(null);
@@ -471,6 +420,26 @@ export default function App() {
             startPlaying(target);
           }}
           onClose={() => setRequiredAddonMap(null)}
+        />
+      )}
+
+      {/* Immediate Skippable Tutorial on First Boot */}
+      {showInitialTutorial && (
+        <TutorialModal onClose={() => setShowInitialTutorial(false)} />
+      )}
+
+      {/* Password Requirement (Secure your account! Add a password now.) with Skippable X */}
+      {showForcedPasswordModal && (
+        <AuthModal
+          initialMode="secure"
+          forcedSecure={false}
+          onClose={() => {
+            setShowForcedPasswordModal(false);
+            sessionStorage.setItem('cag_skip_secure_account', 'true');
+          }}
+          onAuthenticated={() => {
+            setShowForcedPasswordModal(false);
+          }}
         />
       )}
     </div>

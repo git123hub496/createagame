@@ -14,7 +14,7 @@ export const VersionLogModal: React.FC<VersionLogModalProps> = ({ onClose }) => 
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-3xl backdrop-blur-2xl bg-black/75 border border-white/20 p-6 shadow-2xl relative overflow-hidden flex flex-col gap-5 text-white"
+        className="w-full max-w-md rounded-3xl backdrop-blur-2xl bg-neutral-900/90 border border-white/20 p-6 shadow-2xl relative overflow-hidden flex flex-col gap-5 text-white"
       >
         {/* Ambient Top Glow */}
         <div className="absolute top-0 inset-x-0 h-28 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
@@ -43,12 +43,12 @@ export const VersionLogModal: React.FC<VersionLogModalProps> = ({ onClose }) => 
         </div>
 
         {/* Versions Timeline */}
-        <div className="flex flex-col gap-4">
-          {/* Version 2.0 */}
-          <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/5 border border-white/15 relative overflow-hidden">
+        <div className="flex flex-col gap-3.5 max-h-[60vh] overflow-y-auto pr-1">
+          {/* Version 3.0 (Current) */}
+          <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/5 border border-indigo-500/30 relative overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-indigo-300">Version 2.0</span>
+                <span className="text-sm font-black text-indigo-300">Version 3.0</span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
                   Current
                 </span>
@@ -58,6 +58,28 @@ export const VersionLogModal: React.FC<VersionLogModalProps> = ({ onClose }) => 
             <ul className="text-xs text-neutral-300 space-y-1.5 font-medium pl-1">
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Added Addon Studio</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Added Password Security</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Public Profiles</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Version 2.0 */}
+          <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-black text-neutral-300">Version 2.0</span>
+              <span className="text-[10px] font-bold text-neutral-500">October Update</span>
+            </div>
+            <ul className="text-xs text-neutral-400 space-y-1.5 font-medium pl-1">
+              <li className="flex items-start gap-2">
+                <Check className="w-3.5 h-3.5 text-neutral-500 shrink-0 mt-0.5" />
                 <span>Added Addons and Halloween Addon</span>
               </li>
             </ul>

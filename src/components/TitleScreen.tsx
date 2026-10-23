@@ -6,6 +6,8 @@ import { AddonHubModal } from './AddonHubModal';
 import { ProfileModal } from './ProfileModal';
 import { MapEditorChoiceModal } from './MapEditorChoiceModal';
 import { VersionLogModal } from './VersionLogModal';
+import { AuthModal } from './AuthModal';
+import { TutorialModal } from './TutorialModal';
 import { isHalloweenEnabled } from '../services/addonService';
 import { sounds } from '../services/sound';
 import {
@@ -21,6 +23,10 @@ import {
   Users,
   User,
   Plus,
+  ExternalLink,
+  ChevronDown,
+  Lock,
+  HelpCircle,
 } from 'lucide-react';
 
 interface TitleScreenProps {
@@ -29,7 +35,7 @@ interface TitleScreenProps {
   onStartEditor: (mapToOpen?: GameMap | null) => void;
   onExplore: () => void;
   onPlayRandom: () => void;
-  onOpenMultiplayer: () => void;
+  onOpenAddon?: (studio?: boolean) => void;
   onPlayMap?: (map: GameMap) => void;
 }
 
@@ -66,7 +72,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onStartEditor,
   onExplore,
   onPlayRandom,
-  onOpenMultiplayer,
+  onOpenAddon,
   onPlayMap,
 }) => {
   const [showCustomizer, setShowCustomizer] = useState(false);
@@ -75,6 +81,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   const [showAddonHub, setShowAddonHub] = useState(false);
   const [showEditorChoice, setShowEditorChoice] = useState(false);
   const [showVersionLog, setShowVersionLog] = useState(false);
+  const [showAlternateLinks, setShowAlternateLinks] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [isMuted, setIsMuted] = useState(sounds.getMuted());
   const [halloweenActive, setHalloweenActive] = useState(isHalloweenEnabled());
 
@@ -123,9 +132,85 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       />
 
       {/* Top Header Row (Blurred Transparent Glass) */}
-      <header className="relative z-10 w-full max-w-5xl flex items-center justify-end">
-        {/* Audio Mute, Avatar, Profile, Addons & Version Log Quick Buttons */}
-        <div className="flex items-center gap-2.5">
+      <header className="relative z-20 w-full max-w-6xl flex items-center justify-between">
+        {/* Top Left: Alternate Links */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowAlternateLinks(!showAlternateLinks);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 hover:text-white shadow-lg transition cursor-pointer"
+            title="Alternate Links"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Alternate Links</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${showAlternateLinks ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showAlternateLinks && (
+            <div className="absolute left-0 top-full mt-2 w-72 rounded-2xl backdrop-blur-2xl bg-neutral-900/90 border border-white/20 shadow-2xl p-2.5 z-50 flex flex-col gap-1.5 text-white animate-fadeIn">
+              <div className="px-2 py-1 text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                Alternate Links
+              </div>
+              <a
+                href="https://createagame.netlify.app/#"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowAlternateLinks(false)}
+                className="flex items-center justify-between p-2.5 rounded-xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/10 text-xs font-bold text-neutral-200 hover:text-white transition group"
+              >
+                <div>
+                  <div className="text-white text-xs">Netlify Version</div>
+                  <div className="text-[10px] text-neutral-400 font-mono">https://createagame.netlify.app/#</div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-300 shrink-0 ml-2" />
+              </a>
+              <a
+                href="https://createagame-alternate.vercel.app/#"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowAlternateLinks(false)}
+                className="flex items-center justify-between p-2.5 rounded-xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/10 text-xs font-bold text-neutral-200 hover:text-white transition group"
+              >
+                <div>
+                  <div className="text-white text-xs">Vercel Version</div>
+                  <div className="text-[10px] text-neutral-400 font-mono">https://createagame-alternate.vercel.app/#</div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-300 shrink-0 ml-2" />
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Audio Mute, Avatar, Profile, Addons, Account & Tutorial Quick Buttons */}
+        <div className="flex items-center gap-2">
+          {/* Tutorial Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowTutorialModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 hover:text-white shadow-lg transition cursor-pointer"
+            title="How to Play Tutorial"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Tutorial</span>
+          </button>
+
+          {/* Account & Password Security Button */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setShowAuthModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 hover:text-white shadow-lg transition cursor-pointer"
+            title="Account & Password"
+          >
+            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Account</span>
+          </button>
+
           {/* Version Log Button */}
           <button
             onClick={() => {
@@ -136,20 +221,21 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             title="Version Log (Release Updates)"
           >
             <History className="w-3.5 h-3.5 text-indigo-400" />
-            <span>v2.0</span>
+            <span>V3.0</span>
           </button>
 
           {/* Add-on Studio Button */}
           <button
             onClick={() => {
               sounds.playClick();
-              setShowAddonHub(true);
+              if (onOpenAddon) onOpenAddon(false);
+              else setShowAddonHub(true);
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 hover:text-white shadow-lg transition cursor-pointer"
-            title="Add-on Studio (Create & Get Community Addons)"
+            title="Add-ons (Create & Get Community Addons)"
           >
             <Package className="w-3.5 h-3.5 text-purple-400" />
-            <span>Add-ons</span>
+            <span className="hidden sm:inline">Add-ons</span>
           </button>
 
           {/* Player Profile Button */}
@@ -162,7 +248,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             title="My Public Player Profile"
           >
             <User className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Profile</span>
+            <span className="hidden sm:inline">Profile</span>
           </button>
 
           {/* Avatar Customizer */}
@@ -171,16 +257,16 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
               sounds.playClick();
               setShowCustomizer(true);
             }}
-            className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-white shadow-lg transition cursor-pointer"
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-white/15 text-xs font-bold text-white shadow-lg transition cursor-pointer"
             title="Customize Avatar"
           >
             <AvatarRenderer avatar={avatar} size={22} />
-            <span>{avatar.name || 'White Square'}</span>
+            <span className="hidden sm:inline max-w-[90px] truncate">{avatar.name || 'White Square'}</span>
           </button>
 
           <button
             onClick={handleToggleMute}
-            className="p-2.5 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 text-white/90 hover:text-white border border-white/15 shadow-lg transition cursor-pointer"
+            className="p-2 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 text-white/90 hover:text-white border border-white/15 shadow-lg transition cursor-pointer"
             title="Toggle Sound"
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
@@ -292,27 +378,12 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
         </button>
 
-        {/* Multiplayer Button */}
-        <button
-          onClick={() => {
-            sounds.playClick();
-            onOpenMultiplayer();
-          }}
-          className="mt-2.5 w-full max-w-md py-2.5 px-6 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 text-neutral-200 hover:text-white border border-white/15 font-bold text-xs sm:text-sm flex items-center justify-between transition cursor-pointer shadow-lg group"
-        >
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-emerald-400" />
-            <span className="text-white font-extrabold">Multiplayer</span>
-            <span className="text-neutral-400 text-xs font-normal">· Create a party</span>
-          </div>
-          <ArrowRight className="w-3.5 h-3.5 text-neutral-400 group-hover:translate-x-0.5 transition" />
-        </button>
-
         {/* Add-on Studio Button (Create Add-on & Explore Add-ons) */}
         <button
           onClick={() => {
             sounds.playClick();
-            setShowAddonHub(true);
+            if (onOpenAddon) onOpenAddon(true);
+            else setShowAddonHub(true);
           }}
           className="mt-2.5 w-full max-w-md py-2.5 px-6 rounded-2xl backdrop-blur-xl bg-black/40 hover:bg-black/60 text-neutral-200 hover:text-white border border-white/15 font-bold text-xs sm:text-sm flex items-center justify-between transition cursor-pointer shadow-lg group"
         >
@@ -337,25 +408,6 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       <footer className="relative z-10 w-full max-w-3xl text-center py-2.5 px-4 rounded-2xl backdrop-blur-xl bg-black/30 border border-white/10 text-neutral-400 font-medium text-xs">
         WASD or Arrow Keys to Move · Space or Up to Jump · On-Screen Touch Controls on Mobile
       </footer>
-
-      {/* Bottom Right Floating Button: Addon Studio */}
-      <button
-        onClick={() => {
-          sounds.playClick();
-          setShowAddonHub(true);
-        }}
-        className={`fixed bottom-4 right-4 z-40 px-4 py-2.5 rounded-2xl backdrop-blur-2xl border text-white font-black text-xs shadow-2xl flex items-center gap-2 transition transform active:scale-95 cursor-pointer group ${
-          halloweenActive
-            ? 'bg-black/75 hover:bg-black/90 border-orange-500/50 hover:border-orange-400'
-            : 'bg-black/65 hover:bg-black/80 border-white/20 hover:border-purple-400/50'
-        }`}
-        title="Open Add-on Studio (Create & Get Add-ons)"
-      >
-        <div className="p-1 rounded-lg backdrop-blur-md bg-purple-500/20 text-purple-400 group-hover:scale-110 transition">
-          <Package className="w-4 h-4" />
-        </div>
-        <span>Add-on Studio</span>
-      </button>
 
       {/* Version Log Modal */}
       {showVersionLog && (
@@ -395,7 +447,8 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           onPlayMap={onPlayMap}
           onOpenAddonStudio={() => {
             setShowProfile(false);
-            setShowAddonHub(true);
+            if (onOpenAddon) onOpenAddon(true);
+            else setShowAddonHub(true);
           }}
         />
       )}
@@ -409,6 +462,25 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             onClose={() => setShowCustomizer(false)}
           />
         </div>
+      )}
+
+      {/* Account Login / Password Modal */}
+      {showAuthModal && (
+        <AuthModal
+          initialMode="login"
+          forcedSecure={false}
+          onClose={() => setShowAuthModal(false)}
+          onAuthenticated={(newAvatar) => {
+            if (newAvatar) {
+              onUpdateAvatar(newAvatar);
+            }
+          }}
+        />
+      )}
+
+      {/* Tutorial Modal */}
+      {showTutorialModal && (
+        <TutorialModal onClose={() => setShowTutorialModal(false)} />
       )}
     </div>
   );

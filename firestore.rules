@@ -1,93 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny catch-all
+    // Completely permit all reads and writes across all documents and collections
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isValidGameMap(data) {
-      return data.title is string && data.title.size() >= 1 && data.title.size() <= 60
-        && data.elementsJson is string && data.elementsJson.size() <= 200000;
-    }
-
-    function isValidParty(data) {
-      return data.id is string && data.id.size() >= 3 && data.id.size() <= 10
-        && data.hostId is string && data.hostId.size() <= 128
-        && data.hostName is string && data.hostName.size() <= 32
-        && data.gameMode in ['coop', 'race']
-        && data.status in ['waiting', 'starting', 'playing', 'ended', 'closed'];
-    }
-
-    // Maps collection
-    match /maps/{mapId} {
-      // Allow single doc lookup with ID validation
-      allow get: if isValidId(mapId);
-      
-      // Allow community explore list queries
-      allow list: if true;
-      
-      // Anyone can create or overwrite/update a valid map
-      allow create, update: if isValidId(mapId)
-        && (isValidGameMap(request.resource.data) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playCount', 'clearCount', 'likesCount']));
-
-      // Allow deleting maps by ID
-      allow delete: if isValidId(mapId);
-    }
-
-    // 2-Player Multiplayer Parties collection
-    match /parties/{partyId} {
-      // Lookup party by 5-letter code
-      allow get: if isValidId(partyId);
-      
-      // Prevent query scraping across all parties
-      allow list: if false;
-
-      // Allow creating a valid party
-      allow create: if isValidId(partyId) && isValidParty(request.resource.data);
-
-      // Allow updating party state, guest joining, live position syncing, and results
-      allow update: if isValidId(partyId);
-
-      // Allow party cleanup / delete
-      allow delete: if isValidId(partyId);
-    }
-
-    function isValidAddon(data) {
-      return data.title is string && data.title.size() >= 1 && data.title.size() <= 60
-        && data.authorName is string && data.authorName.size() <= 32
-        && data.addonDataJson is string && data.addonDataJson.size() <= 500000;
-    }
-
-    function isValidProfile(data) {
-      return data.name is string && data.name.size() >= 1 && data.name.size() <= 32
-        && data.avatarJson is string && data.avatarJson.size() <= 4000
-        && data.isPublic is bool;
-    }
-
-    // Community Add-ons collection
-    match /addons/{addonId} {
-      allow get: if isValidId(addonId);
-      allow list: if true;
-      allow create, update: if isValidId(addonId) && isValidAddon(request.resource.data);
-      allow delete: if isValidId(addonId);
-    }
-
-    // Player Profiles collection
-    match /profiles/{profileId} {
-      allow get: if isValidId(profileId);
-      allow list: if true;
-      allow create, update: if isValidId(profileId) && isValidProfile(request.resource.data);
-      allow delete: if isValidId(profileId);
-    }
-
-    // Health check collection for connection testing
-    match /test/connection {
-      allow read: if true;
+      allow read, write: if true;
     }
   }
 }

@@ -465,8 +465,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       height: 32,
     };
 
-    let respawnX = spawnElem.x;
-    let respawnY = spawnElem.y;
+    const initialSpawnX = spawnElem.x;
+    const initialSpawnY = spawnElem.y;
+    let respawnX = initialSpawnX;
+    let respawnY = initialSpawnY;
 
     // Player physics state
     const player = {
@@ -527,6 +529,40 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     let currentDeaths = 0;
     let gameCleared = false;
 
+    // Clean Reset to Starting Point (Never freezes, restarts clock and player physics)
+    const resetToStart = () => {
+      gameCleared = false;
+      player.dead = false;
+      player.deathTimer = 0;
+      player.x = initialSpawnX;
+      player.y = initialSpawnY;
+      player.vx = 0;
+      player.vy = 0;
+      player.isGrounded = false;
+      player.squashX = 1;
+      player.squashY = 1;
+      respawnX = initialSpawnX;
+      respawnY = initialSpawnY;
+      camera.x = player.x - canvas.width * 0.45;
+      camera.y = player.y - canvas.height * 0.55;
+      collectedCoins.clear();
+      coinsEarned = 0;
+      setCoinsCollected(0);
+      reachedCheckpoints.clear();
+      startTime = performance.now();
+      currentDeaths = 0;
+      setDeaths(0);
+      sounds.playJump();
+      if (timerDisplayRef.current) {
+        timerDisplayRef.current.textContent = '0.00s';
+      }
+    };
+
+    const handleRestartEvent = () => {
+      resetToStart();
+    };
+    window.addEventListener('cag_restart_level', handleRestartEvent);
+
     // Keyboard handlers
     const onKeyDown = (e: KeyboardEvent) => {
       const code = e.code;
@@ -546,8 +582,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         inputRef.current.down = true;
       }
       if (code === 'KeyR') {
-        // Quick Reset
-        triggerDeath('reset');
+        // Full Reset straight to start
+        resetToStart();
       }
       if (code === 'KeyM') {
         handleToggleMute();
@@ -1754,6 +1790,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('cag_restart_level', handleRestartEvent);
     };
   }, [map.id, isVerificationMode]);
 
@@ -1868,19 +1905,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
         </button>
 
-        {/* Quick Restart (only in solo) */}
-        {!party && (
-          <button
-            onClick={() => {
-              const ev = new KeyboardEvent('keydown', { code: 'KeyR' });
-              window.dispatchEvent(ev);
-            }}
-            title="Restart Level (R)"
-            className="p-2 rounded-2xl backdrop-blur-xl bg-black/50 hover:bg-black/70 text-white/90 hover:text-white border border-white/15 shadow transition cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        )}
+        {/* Quick Restart */}
+        <button
+          onClick={() => {
+            sounds.playClick();
+            window.dispatchEvent(new CustomEvent('cag_restart_level'));
+          }}
+          title="Restart Level from Beginning (R)"
+          className="p-2 rounded-2xl backdrop-blur-xl bg-black/50 hover:bg-black/70 text-white/90 hover:text-white border border-white/15 shadow transition cursor-pointer"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
 
         {/* Toggle On-screen Controls */}
         <button

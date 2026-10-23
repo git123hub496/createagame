@@ -559,7 +559,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5">
                 <div className="p-3 rounded-2xl backdrop-blur-xl bg-black/40 border border-white/10 text-center space-y-1">
                   <Flag className="w-4 h-4 text-emerald-400 mx-auto" />
                   <div className="text-lg font-black font-mono text-white">{profile.mapsCleared}</div>
@@ -573,21 +573,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
 
                 <div className="p-3 rounded-2xl backdrop-blur-xl bg-black/40 border border-white/10 text-center space-y-1">
-                  <Trophy className="w-4 h-4 text-amber-400 mx-auto" />
-                  <div className="text-lg font-black font-mono text-white">{profile.partiesWon}</div>
-                  <div className="text-[10px] text-neutral-400 font-bold uppercase">Races Won</div>
-                </div>
-
-                <div className="p-3 rounded-2xl backdrop-blur-xl bg-black/40 border border-white/10 text-center space-y-1">
                   <Package className="w-4 h-4 text-purple-400 mx-auto" />
                   <div className="text-lg font-black font-mono text-white">{profile.addonsCreated}</div>
                   <div className="text-[10px] text-neutral-400 font-bold uppercase">Add-ons Created</div>
-                </div>
-
-                <div className="p-3 rounded-2xl backdrop-blur-xl bg-black/40 border border-white/10 text-center space-y-1 sm:col-span-2">
-                  <Shield className="w-4 h-4 text-cyan-400 mx-auto" />
-                  <div className="text-lg font-black font-mono text-white">{profile.partiesPlayed}</div>
-                  <div className="text-[10px] text-neutral-400 font-bold uppercase">Multiplayer Matches</div>
                 </div>
               </div>
 

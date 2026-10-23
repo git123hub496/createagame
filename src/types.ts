@@ -87,7 +87,7 @@ export interface AvatarConfig {
   customHatImg?: string;
 }
 
-export type AppView = 'title' | 'editor' | 'play' | 'explore';
+export type AppView = 'title' | 'editor' | 'play' | 'explore' | 'addon' | 'addon-studio';
 
 export interface CustomAddonElement {
   id: string;

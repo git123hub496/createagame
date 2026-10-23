@@ -261,9 +261,47 @@
         }
       },
       "required": ["id", "name", "avatarJson", "isPublic"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "User account credentials and password authentication saved to Firebase",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username or account identifier",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "SHA-256 hash of user password",
+          "maxLength": 128
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Linked profile ID",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["username", "passwordHash", "profileId"]
     }
   },
   "firestore": {
+    "/accounts/{accountId}": {
+      "schema": {
+        "$ref": "#/entities/Account"
+      },
+      "description": "Account security and password authentication records"
+    },
     "/maps/{mapId}": {
       "schema": {
         "$ref": "#/entities/GameMap"
